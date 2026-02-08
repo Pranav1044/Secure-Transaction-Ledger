@@ -5,6 +5,7 @@ import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
+import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
 @Entity
@@ -25,7 +26,7 @@ public class Transaction {
     private Long toAccount;
     
     @Column(nullable = false, precision = 19, scale = 2)
-    private Double amount;
+    private BigDecimal amount;
     
     @Column(nullable = false)
     private LocalDateTime timestamp;

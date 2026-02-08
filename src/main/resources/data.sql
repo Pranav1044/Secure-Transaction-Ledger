@@ -5,10 +5,9 @@
 -- Account 4: Diana - $500.00
 -- Account 5: Eve - $3000.75
 
-INSERT INTO accounts (id, balance, owner) VALUES 
+MERGE INTO accounts (id, balance, owner) KEY (id) VALUES
 (1, 1000.00, 'Alice'),
 (2, 2000.00, 'Bob'),
 (3, 1500.50, 'Charlie'),
 (4, 500.00, 'Diana'),
-(5, 3000.75, 'Eve')
-ON CONFLICT (id) DO NOTHING;
+(5, 3000.75, 'Eve');
