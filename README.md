@@ -1,3 +1,6 @@
+[![Open in Gitpod](https://gitpod.io/button/open-in-gitpod.svg)](https://gitpod.io/#https://github.com/harsh15520/Secure-Transaction-Ledger)
+
+---
 # Secure Transaction Ledger
 
 A Spring Boot MVP application for managing secure financial transactions with PostgreSQL database.
