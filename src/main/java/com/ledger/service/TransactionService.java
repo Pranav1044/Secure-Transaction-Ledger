@@ -10,7 +10,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.util.Optional;
+import java.math.BigDecimal;
 
 @Service
 @RequiredArgsConstructor
@@ -20,9 +20,12 @@ public class TransactionService {
     private final TransactionRepository transactionRepository;
     
     @Transactional
-    public Transaction transferFunds(Long fromId, Long toId, Double amount) {
-        // Validate amount
-        if (amount == null || amount <= 0) {
+    public Transaction transferFunds(Long fromId, Long toId, BigDecimal amount) {
+        if (fromId == null || toId == null) {
+            throw new IllegalArgumentException("Account IDs must not be null");
+        }
+        
+        if (amount == null || amount.compareTo(BigDecimal.ZERO) <= 0) {
             throw new IllegalArgumentException("Transfer amount must be greater than zero");
         }
         
@@ -30,29 +33,32 @@ public class TransactionService {
             throw new IllegalArgumentException("Source and destination accounts cannot be the same");
         }
         
-        // Load accounts with pessimistic locking to ensure consistency
-        // This ensures that even if the system crashes mid-way, the transaction
-        // will be rolled back and total balance remains constant
-        Account fromAccount = accountRepository.findByIdWithLock(fromId)
-                .orElseThrow(() -> new AccountNotFoundException(fromId));
+        // Acquire locks in consistent ID order to prevent deadlocks when
+        // concurrent transfers operate on the same pair of accounts.
+        Long firstLockId = fromId < toId ? fromId : toId;
+        Long secondLockId = fromId < toId ? toId : fromId;
         
-        Account toAccount = accountRepository.findByIdWithLock(toId)
+        accountRepository.findByIdWithLock(firstLockId)
+                .orElseThrow(() -> new AccountNotFoundException(firstLockId));
+        accountRepository.findByIdWithLock(secondLockId)
+                .orElseThrow(() -> new AccountNotFoundException(secondLockId));
+        
+        // Re-fetch by role after ordered locking
+        Account fromAccount = accountRepository.findById(fromId)
+                .orElseThrow(() -> new AccountNotFoundException(fromId));
+        Account toAccount = accountRepository.findById(toId)
                 .orElseThrow(() -> new AccountNotFoundException(toId));
         
-        // Check sufficient funds
-        if (fromAccount.getBalance() < amount) {
+        if (fromAccount.getBalance().compareTo(amount) < 0) {
             throw new InsufficientFundsException(fromId, fromAccount.getBalance(), amount);
         }
         
-        // Perform transfer atomically
-        fromAccount.setBalance(fromAccount.getBalance() - amount);
-        toAccount.setBalance(toAccount.getBalance() + amount);
+        fromAccount.setBalance(fromAccount.getBalance().subtract(amount));
+        toAccount.setBalance(toAccount.getBalance().add(amount));
         
-        // Save accounts
         accountRepository.save(fromAccount);
         accountRepository.save(toAccount);
         
-        // Create and save transaction record
         Transaction transaction = new Transaction();
         transaction.setFromAccount(fromId);
         transaction.setToAccount(toId);
@@ -61,7 +67,7 @@ public class TransactionService {
         return transactionRepository.save(transaction);
     }
     
-    public Double getBalance(Long accountId) {
+    public BigDecimal getBalance(Long accountId) {
         Account account = accountRepository.findById(accountId)
                 .orElseThrow(() -> new AccountNotFoundException(accountId));
         return account.getBalance();
