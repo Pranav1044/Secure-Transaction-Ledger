@@ -3,55 +3,105 @@
 ---
 # Secure Transaction Ledger
 
-A Spring Boot MVP application for managing secure financial transactions with PostgreSQL database.
+A Spring Boot MVP for managing secure financial transactions. Uses an H2 in-memory database so there's nothing to install — just run and go.
 
 ## Features
 
-- **Account Management**: Create and manage accounts with balances
-- **Secure Transactions**: Transfer funds between accounts with ACID guarantees
-- **Transaction History**: All transfers are recorded with timestamps
-- **Balance Inquiry**: Check account balances via REST API
+- Transfer funds between accounts with ACID guarantees
+- View account balances via REST API
+- All transfers recorded with timestamps
+- 5 pre-loaded test accounts
 
 ## Prerequisites
 
-- Java 17 or higher
+- Java 17+
 - Maven 3.6+
-- PostgreSQL 12+ (running on localhost:5432)
 
-## Database Setup
-
-1. Create a PostgreSQL database:
-```sql
-CREATE DATABASE ledger_db;
-```
-
-2. Update `src/main/resources/application.properties` with your PostgreSQL credentials if different from defaults:
-```properties
-spring.datasource.url=jdbc:postgresql://localhost:5432/ledger_db
-spring.datasource.username=postgres
-spring.datasource.password=postgres
-```
+No database setup needed — H2 runs in-memory automatically.
 
 ## Running the Application
 
-1. Build the project:
-```bash
-mvn clean install
-```
-
-2. Run the application:
 ```bash
 mvn spring-boot:run
 ```
 
-The application will start on `http://localhost:8080`
+The app starts on port 8080. The H2 console is available at `/h2-console` (JDBC URL: `jdbc:h2:mem:ledger_db`, user: `sa`, no password).
+
+## Running Tests
+
+```bash
+mvn test
+```
+
+20 tests cover the service layer and controller endpoints.
+
+---
+
+## How the Code is Organized (MVC Pattern)
+
+This project follows the **Model-View-Controller** pattern. Every web app you'll encounter uses some version of this. Here's how a request flows through the code:
+
+```
+User sends HTTP request
+        │
+        ▼
+   Controller          ← receives the request, validates input
+        │
+        ▼
+     Service           ← contains business logic (transfer rules, balance checks)
+        │
+        ▼
+    Repository         ← talks to the database
+        │
+        ▼
+      Model            ← defines the data shape (Account, Transaction)
+```
+
+### File Map
+
+| Folder | What it does | Key files |
+|--------|-------------|-----------|
+| `model/` | Defines the data (database tables) | `Account.java`, `Transaction.java` |
+| `repository/` | Reads/writes data to the database | `AccountRepository.java`, `TransactionRepository.java` |
+| `service/` | Business logic — the "rules" | `TransactionService.java` |
+| `controller/` | HTTP endpoints — what the user calls | `TransactionController.java` |
+| `exception/` | Custom error types | `AccountNotFoundException.java`, `InsufficientFundsException.java` |
+| `resources/` | Configuration and seed data | `application.properties`, `data.sql` |
+
+### Reading order for newcomers
+
+1. `Account.java` — see what an account looks like (id, balance, owner)
+2. `Transaction.java` — see what a transaction record looks like
+3. `TransactionController.java` — see the two API endpoints
+4. `TransactionService.java` — see the transfer logic
+5. `data.sql` — see the test accounts loaded at startup
+
+---
+
+## Team Roles
+
+### Final Year — Architect / PM
+- Owns system design, database schema, and high-level logic
+- Reviews all pull requests before merge
+- Defines what features to build next (see `TODO.md`)
+
+### 2nd Year — Feature Developer
+- Picks a module from `TODO.md` and implements it
+- Works inside the existing MVC structure (add a new controller, service, etc.)
+- Uses AI tools to generate code within the defined patterns
+
+### 1st Year — UI & QA
+- Builds frontend pages (HTML/CSS/JS) that call the API
+- Writes and runs tests (`mvn test`)
+- Reports bugs as GitHub Issues
+
+---
 
 ## API Endpoints
 
 ### Transfer Funds
 **POST** `/api/transfer`
 
-Request body:
 ```json
 {
   "fromId": 1,
@@ -60,31 +110,16 @@ Request body:
 }
 ```
 
-Success Response (200 OK):
-```json
-{
-  "message": "Transfer completed successfully",
-  "transactionId": 1,
-  "fromAccount": 1,
-  "toAccount": 2,
-  "amount": 100.50,
-  "timestamp": "2024-01-15T10:30:00"
-}
-```
-
-Error Response (400 Bad Request):
-```json
-{
-  "error": "Insufficient funds in account 1. Current balance: 500.00, Required: 1000.00"
-}
-```
+| Status | Meaning |
+|--------|---------|
+| 200 | Transfer succeeded |
+| 400 | Validation error or insufficient funds |
+| 404 | Account not found |
+| 500 | Unexpected server error |
 
 ### Get Balance
 **GET** `/api/balance/{id}`
 
-Example: `GET /api/balance/1`
-
-Success Response (200 OK):
 ```json
 {
   "accountId": 1,
@@ -92,94 +127,48 @@ Success Response (200 OK):
 }
 ```
 
-Error Response (404 Not Found):
-```json
-{
-  "error": "Account with ID 999 not found"
-}
-```
+## Test Accounts (loaded at startup)
 
-## Initial Test Data
-
-The application comes with 5 pre-configured accounts (loaded from `data.sql`):
-- Account 1: Alice - $1000.00
-- Account 2: Bob - $2000.00
-- Account 3: Charlie - $1500.50
-- Account 4: Diana - $500.00
-- Account 5: Eve - $3000.75
-
-## Transaction Safety
-
-The `transferFunds` method ensures data integrity through:
-
-- **@Transactional**: Ensures atomicity - all operations succeed or all fail
-- **Pessimistic Locking**: Prevents concurrent modifications using `PESSIMISTIC_WRITE` lock mode
-- **Automatic Rollback**: If the system crashes mid-way, the transaction is rolled back automatically
-- **Balance Consistency**: Total balance across all accounts remains constant even during failures
-
-## Error Handling
-
-The application includes custom exceptions:
-- `AccountNotFoundException`: When an account ID doesn't exist
-- `InsufficientFundsException`: When attempting to transfer more than available balance
-
-## Technology Stack
-
-- **Java 17**
-- **Spring Boot 3.2.0**
-- **Spring Data JPA**
-- **PostgreSQL**
-- **Lombok** (for reducing boilerplate code)
-- **Maven** (build tool)
-
-## Project Structure
-
-```
-src/main/java/com/ledger/
-├── SecureTransactionLedgerApplication.java  # Main application class
-├── controller/
-│   └── TransactionController.java           # REST endpoints
-├── service/
-│   └── TransactionService.java              # Business logic with @Transactional
-├── repository/
-│   ├── AccountRepository.java               # Account data access
-│   └── TransactionRepository.java           # Transaction data access
-├── model/
-│   ├── Account.java                         # Account entity
-│   └── Transaction.java                     # Transaction entity
-└── exception/
-    ├── AccountNotFoundException.java         # Custom exception
-    └── InsufficientFundsException.java      # Custom exception
-```
+| ID | Owner | Balance |
+|----|-------|---------|
+| 1 | Alice | $1,000.00 |
+| 2 | Bob | $2,000.00 |
+| 3 | Charlie | $1,500.50 |
+| 4 | Diana | $500.00 |
+| 5 | Eve | $3,000.75 |
 
 ## Example Usage
 
-### Transfer funds from Account 1 to Account 2:
 ```bash
+# Transfer $250 from Alice to Bob
 curl -X POST http://localhost:8080/api/transfer \
   -H "Content-Type: application/json" \
-  -d '{
-    "fromId": 1,
-    "toId": 2,
-    "amount": 250.00
-  }'
-```
+  -d '{"fromId": 1, "toId": 2, "amount": 250.00}'
 
-### Check balance of Account 1:
-```bash
+# Check Alice's balance
 curl http://localhost:8080/api/balance/1
 ```
 
+## Technology Stack
+
+- Java 17, Spring Boot 3.2.0, Spring Data JPA
+- H2 (in-memory database)
+- Lombok, Maven
+
 ## Database Schema
 
-### Accounts Table
-- `id` (BIGINT, PRIMARY KEY, AUTO_INCREMENT)
-- `balance` (DECIMAL(19,2), NOT NULL)
-- `owner` (VARCHAR, NOT NULL)
+### accounts
+| Column | Type | Constraint |
+|--------|------|------------|
+| id | BIGINT | PRIMARY KEY, AUTO_INCREMENT |
+| balance | DECIMAL(19,2) | NOT NULL |
+| owner | VARCHAR | NOT NULL |
 
-### Transactions Table
-- `id` (BIGINT, PRIMARY KEY, AUTO_INCREMENT)
-- `from_account` (BIGINT, NOT NULL)
-- `to_account` (BIGINT, NOT NULL)
-- `amount` (DECIMAL(19,2), NOT NULL)
-- `timestamp` (TIMESTAMP, NOT NULL)
+### transactions
+| Column | Type | Constraint |
+|--------|------|------------|
+| id | BIGINT | PRIMARY KEY, AUTO_INCREMENT |
+| from_account | BIGINT | NOT NULL |
+| to_account | BIGINT | NOT NULL |
+| amount | DECIMAL(19,2) | NOT NULL |
+| timestamp | TIMESTAMP | NOT NULL |
