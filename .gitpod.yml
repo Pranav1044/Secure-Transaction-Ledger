@@ -1,0 +1,14 @@
+# Gitpod automation for the Root-level project
+image: gitpod/workspace-postgres
+
+tasks:
+  - name: Launch Ledger MVP
+    init: mvn clean install -DskipTests
+    command: ./mvnw spring-boot:run
+
+ports:
+  - port: 8080
+    onOpen: notify
+    visibility: public
+  - port: 5432
+    onOpen: ignore
