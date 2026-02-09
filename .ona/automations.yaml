@@ -1,0 +1,18 @@
+tasks:
+  build:
+    name: Build project
+    description: Download dependencies and compile the project.
+    command: |
+      mvn clean compile -q
+    triggeredBy:
+      - postDevcontainerStart
+
+services:
+  app:
+    name: Spring Boot App
+    description: Runs the ledger application on port 8080.
+    commands:
+      start: |
+        mvn spring-boot:run -q
+      ready: |
+        curl -sf http://localhost:8080/api/balance/1
