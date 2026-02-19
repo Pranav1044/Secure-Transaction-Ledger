@@ -1,9 +1,12 @@
-# Gitpod automation for the Root-level project
-image: gitpod/workspace-postgres
 
-tasks:
-  - name: Launch Ledger MVP
-    init: mvn clean install -DskipTests
+# YAML is a configuration lang that tells system when to start and do this automatically
+
+# Gitpod is a cloud developement environment used for automation for the Root-level project
+image: gitpod/workspace-postgres  # image is a pre-build environment.
+
+tasks:  # tells that here are the commands to run automatically
+  - name: Launch Ledger MVP  # jsut a name
+    init: mvn clean install -DskipTests 
     command: ./mvnw spring-boot:run
 
 ports:
@@ -12,3 +15,23 @@ ports:
     visibility: public
   - port: 5432
     onOpen: ignore
+    visibility : public
+
+# "-" means one item(task) in a list
+
+# "init" only run once when the environment is built. Prepare the environment
+# mvn : Maven command
+# clean : delete the old compiled files stored in target
+# install : compile .java file to .class and install dependencies if needed
+# -D : define a property
+# skipTests : skipks tests so that it startup will be fast 
+
+# command : run this everytime when workspace starts , unlike init. runs the app
+# /mvnw uses "project-specific" maven version
+#spring-boot:run : starts the backened server
+
+# ports : tell gitpod when netwrok ports should be exposed
+# port : 8080 is the default port for spring-boot 
+# onOpen : notify will send notification that your port become active
+# visibility : public make this port accessible publicly.
+# port : 5432 is dafault port for postgresql
